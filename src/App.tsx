@@ -1,245 +1,17 @@
-import React, { useCallback, useEffect, useRef, useState } from "react";
-import {
-  ArrowRight,
-  Award,
-  CheckCircle2,
-  Download,
-  ExternalLink,
-  Info,
-  Loader2,
-  Share2,
-  ShieldCheck,
-  Sparkles,
-  User,
-  Wallet,
-  Waves,
-} from "lucide-react";
+import React, { useEffect, useState } from "react";
+import { BrowserRouter as Router, Routes, Route, useNavigate } from "react-router-dom";
 import { SuiProviders, useSlushWallet } from "../blockchain/wallet";
+import Navbar from "./components/Navbar";
+import Footer from "./components/Footer";
+import AuthModal from "./components/AuthModal";
+import Home from "./pages/Home";
+import Courses from "./pages/Courses";
+import CourseLearning from "./pages/CourseLearning";
+import Certificate from "./pages/Certificate";
+import CertificateInfo from "./pages/CertificateInfo";
+import Profile from "./pages/Profile";
 import AdminView, { AdminPayload, AdminQueueEntry, NotificationItem, UserPayload } from "./AdminView";
-declare global {
-  interface Window {
-    confetti?: (options: Record<string, unknown>) => void;
-  }
-}
 
-const SuiLogo: React.FC<{ className?: string }> = ({ className = "w-6 h-6" }) => (
-  <svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-    <path d="M50 0C50 0 20 35 20 60C20 76.5685 33.4315 90 50 90C66.5685 90 80 76.5685 80 60C80 35 50 0 50 0Z" fill="currentColor" />
-    <path
-      d="M50 15C50 15 30 40 30 60C30 71.0457 38.9543 80 50 80C61.0457 80 70 71.0457 70 60C70 40 50 15 50 15Z"
-      fill="white"
-      fillOpacity="0.3"
-    />
-  </svg>
-);
-
-const Navbar: React.FC<{ walletAddress: string | null; onConnect: () => void; onDisconnect?: () => void; isConnecting?: boolean; isDisconnecting?: boolean; onAdmin?: () => void }> = ({
-  walletAddress,
-  onConnect,
-  onDisconnect,
-  isConnecting,
-  isDisconnecting,
-  onAdmin,
-}) => {
-  const [isScrolled, setIsScrolled] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 10);
-    window.addEventListener("scroll", handleScroll);
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
-
-  const shortWallet = walletAddress ? `${walletAddress.slice(0, 6)}...${walletAddress.slice(-4)}` : "";
-
-  return (
-    <nav
-      className={`fixed w-full z-50 transition-all duration-300 ${
-        isScrolled ? "bg-white/90 backdrop-blur-md border-b border-slate-200 py-3 shadow-sm" : "bg-transparent py-6"
-      }`}
-    >
-      <div className="max-w-6xl mx-auto px-6 flex justify-between items-center">
-        <div className="flex items-center space-x-3 group">
-          <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-200">
-            <SuiLogo className="text-white w-7 h-7" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-black text-slate-900 leading-none tracking-tight uppercase">Sui Academy</span>
-            <span className="text-[10px] text-cyan-600 font-bold tracking-widest uppercase">Ecosystem Education</span>
-          </div>
-        </div>
-
-        <div className="flex items-center space-x-3">
-          <button
-            onClick={onAdmin}
-            className="px-4 py-2 rounded-full border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-xs font-bold uppercase tracking-wider transition-all active:scale-95"
-          >
-            Admin
-          </button>
-          {!walletAddress ? (
-            <button
-              onClick={onConnect}
-              disabled={isConnecting || isDisconnecting}
-              className="group flex items-center space-x-2 px-6 py-2.5 rounded-full text-sm font-bold transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed bg-slate-900 text-white hover:bg-slate-800 shadow-xl shadow-slate-200"
-            >
-              <Wallet className="w-4 h-4 group-hover:rotate-12 transition-transform" />
-              <span>
-                {isDisconnecting
-                  ? "Đang gỡ ví..."
-                  : isConnecting
-                    ? "Đang kết nối..."
-                    : "Kết nối ví Slush"}
-              </span>
-            </button>
-          ) : (
-            <div className="flex items-center space-x-3">
-              <div className="px-4 py-2 rounded-full border border-cyan-200 bg-cyan-50 text-cyan-700 text-sm font-bold flex items-center space-x-2 shadow-inner">
-                <Wallet className="w-4 h-4" />
-                <span>{shortWallet}</span>
-              </div>
-              <button
-                onClick={onDisconnect}
-                disabled={isDisconnecting}
-                className="px-4 py-2 rounded-full border border-slate-200 text-slate-700 bg-white hover:bg-slate-50 text-sm font-bold transition-all active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed"
-              >
-                Gỡ ví
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-    </nav>
-  );
-};
-
-const CertificateCard: React.FC<{ studentName: string; courseName: string; date: string; txHash: string; isSuccess: boolean; walletAddress?: string | null; certificateRef?: React.RefObject<HTMLDivElement> }> = ({
-  studentName,
-  courseName,
-  date,
-  txHash,
-  isSuccess,
-  walletAddress,
-  certificateRef,
-}) => {
-  const evidenceValue = txHash || walletAddress || "Chưa kết nối ví (Not connected)";
-
-  return (
-  <div ref={certificateRef} className="relative w-full max-w-4xl mx-auto transition-all duration-700">
-    {isSuccess && (
-      <div className="absolute inset-0 flex items-center justify-center -z-10 pointer-events-none">
-        <div className="absolute w-[120%] h-[120%] border-2 border-cyan-400/20 rounded-full animate-ping opacity-0" style={{ animationDuration: "3s" }} />
-        <div
-          className="absolute w-[140%] h-[140%] border-2 border-blue-400/10 rounded-full animate-ping opacity-0"
-          style={{ animationDuration: "4s", animationDelay: "0.5s" }}
-        />
-      </div>
-    )}
-
-    <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20">
-      <span
-        className={`px-4 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border shadow-sm flex items-center space-x-2 ${
-          isSuccess ? "bg-emerald-500 border-emerald-400 text-white shadow-emerald-200" : "bg-white border-slate-200 text-slate-500"
-        }`}
-      >
-        {isSuccess ? (
-          <>
-            <CheckCircle2 className="w-3 h-3" /> <span>Đã xác thực trên Sui Network</span>
-          </>
-        ) : (
-          <>
-            <Sparkles className="w-3 h-3 text-cyan-500" /> <span>Bản xem trước trực tiếp</span>
-          </>
-        )}
-      </span>
-    </div>
-
-    <div className={`absolute -inset-2 bg-gradient-to-r ${isSuccess ? "from-emerald-400/30 to-cyan-400/30" : "from-cyan-400/20 via-blue-500/10 to-indigo-500/20"} rounded-[2.5rem] blur-2xl opacity-50`} />
-
-    <div className={`relative bg-white border ${isSuccess ? "border-emerald-200 shadow-emerald-100" : "border-slate-200 shadow-slate-200"} rounded-[2rem] overflow-hidden aspect-[1.6/1] shadow-2xl flex flex-col transition-all duration-500`}>
-      {isSuccess && (
-        <div className="absolute inset-0 z-30 pointer-events-none overflow-hidden">
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="absolute h-[200%] w-[150%] bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent skew-x-[-20deg]" style={{ animation: "wave-sweep 2s ease-out forwards" }} />
-            <style>{`
-              @keyframes wave-sweep {
-                0% { transform: translateX(-150%); }
-                100% { transform: translateX(150%); }
-              }
-            `}</style>
-          </div>
-        </div>
-      )}
-
-      <div className="absolute inset-0 opacity-[0.03] pointer-events-none flex items-center justify-center overflow-hidden">
-        <SuiLogo className={`w-[90%] h-[90%] transition-colors duration-1000 ${isSuccess ? "text-emerald-500" : "text-cyan-600"} rotate-[-15deg]`} />
-      </div>
-
-      <div className={`absolute inset-6 border ${isSuccess ? "border-emerald-100" : "border-slate-100"} rounded-[1.5rem] pointer-events-none transition-colors`}>
-        <div className="absolute bottom-0 left-0 w-full h-24 opacity-[0.05] pointer-events-none overflow-hidden rounded-b-[1.5rem]">
-          <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="h-full w-full">
-            <path
-              d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z"
-              fill="currentColor"
-            ></path>
-          </svg>
-        </div>
-      </div>
-
-      <div className="relative z-10 p-12 flex flex-col h-full justify-between">
-        <div className="flex justify-between items-start">
-          <div className="flex items-center space-x-4">
-            <div className={`w-16 h-16 bg-gradient-to-br ${isSuccess ? "from-emerald-500 to-cyan-500" : "from-cyan-400 to-blue-600"} rounded-2xl flex items-center justify-center shadow-xl transition-all`}>
-              <SuiLogo className="text-white w-10 h-10" />
-            </div>
-            <div className="space-y-0.5">
-              <h2 className="text-2xl font-black text-slate-900 tracking-tight uppercase italic leading-none">Sui Academy</h2>
-              <p className={`text-[10px] font-mono tracking-[0.2em] font-bold uppercase ${isSuccess ? "text-emerald-600" : "text-cyan-600"}`}>
-                Blockchain Verified NFT Object
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-col items-end opacity-80">
-            <Award className={`${isSuccess ? "text-emerald-500" : "text-amber-400"} w-14 h-14 drop-shadow-sm mb-1 transition-colors`} />
-            <span className="text-[10px] font-black text-slate-400 italic tracking-widest">SUI GENESIS</span>
-          </div>
-        </div>
-
-        <div className="text-center space-y-3">
-          <p className="text-slate-400 uppercase tracking-[0.3em] text-[10px] font-bold">Chứng nhận hoàn tất chương trình</p>
-          <h1
-            className="text-5xl md:text-7xl text-slate-900 min-h-[1.1em] px-4 truncate leading-tight tracking-tight"
-            style={{ fontFamily: '"Playfair Display", "Noto Serif", "Times New Roman", serif', fontWeight: 600, fontStyle: "italic" }}
-          >
-            {studentName || "Họ Tên Của Bạn"}
-          </h1>
-          <div className={`h-px w-48 bg-gradient-to-r from-transparent ${isSuccess ? "via-emerald-200" : "via-slate-200"} to-transparent mx-auto`} />
-          <p className="text-slate-500 text-base font-medium">Đã đạt đủ điều kiện chuyên môn cho khóa đào tạo</p>
-          <p className="text-2xl md:text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-blue-800">{courseName}</p>
-        </div>
-
-        <div className="flex justify-between items-end border-t border-slate-50 pt-8">
-          <div className="space-y-1">
-            <p className="text-[9px] text-slate-400 uppercase font-mono font-bold tracking-wider">Ngày cấp bằng</p>
-            <p className="text-slate-800 font-bold text-sm">{date}</p>
-          </div>
-
-          <div className="text-center flex flex-col items-center">
-            <Waves className={`${isSuccess ? "text-emerald-500" : "text-cyan-500"} w-10 h-10 mb-2 opacity-20 transition-colors`} />
-            <p className="text-[7px] text-slate-400 font-mono tracking-widest uppercase">NODE: SUI-MAIN-01</p>
-          </div>
-
-          <div className="space-y-1 text-right max-w-[240px]">
-            <p className="text-[9px] text-slate-400 uppercase font-mono font-bold tracking-wider">Wallet Address</p>
-            <div className={`text-[10px] font-mono px-3 py-1 rounded-lg truncate ${isSuccess ? "bg-emerald-50 text-emerald-700 font-bold" : "bg-slate-50 text-slate-400"}`}>
-              {evidenceValue}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-  );
-};
-const COURSE_INFO = { id: "course-fullstack-sui", name: "Fullstack Web3 & Sui Move Development" };
 const STORAGE_KEYS = {
   queue: "cert_admin_queue",
   notifications: "cert_notifications_queue",
@@ -255,6 +27,7 @@ const createPreviewHash = (input: string) => {
 };
 
 const normalizeEntry = (entry: any): AdminQueueEntry => {
+  const COURSE_INFO = { id: "course-fullstack-sui", name: "Fullstack Web3 & Sui Move Development" };
   const requestId = entry.requestId || entry.id || `REQ-${Date.now()}`;
   const courseId = entry.courseId || entry.course?.course_id || COURSE_INFO.id;
   const courseName = entry.courseName || entry.course?.course_name || COURSE_INFO.name;
@@ -322,436 +95,112 @@ const normalizeEntry = (entry: any): AdminQueueEntry => {
   };
 };
 
-const AppContent: React.FC<{
-  onEnterAdmin?: (preview?: string | null) => void;
-  onQueueSubmission?: (entry: AdminQueueEntry) => void;
-  onQueueNotification?: (notification: NotificationItem) => void;
-  course: { id: string; name: string };
-}> = ({ onEnterAdmin, onQueueSubmission, onQueueNotification, course }) => {
+// Layout component that includes Navbar and Footer
+const Layout: React.FC<{ 
+  children: React.ReactNode;
+  onAdmin: () => void;
+}> = ({ children, onAdmin }) => {
+  const navigate = useNavigate();
   const { currentAccount, connectSlush, disconnectWallet, isConnecting, isDisconnecting } = useSlushWallet();
-  const wallet = currentAccount?.address ?? null;
-  const certificateRef = useRef<HTMLDivElement>(null);
-  const [issueDate, setIssueDate] = useState<string>("");
-  const [studentName, setStudentName] = useState("");
-  const [isMinting, setIsMinting] = useState(false);
-  const [isSuccess, setIsSuccess] = useState(false);
-  const [txHash, setTxHash] = useState("");
-  const [currentStep, setCurrentStep] = useState(1);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<"login" | "register">("login");
+  const [currentUser, setCurrentUser] = useState<{ fullName: string; role: "student" | "admin"; email: string } | null>(null);
 
-  useEffect(() => {
-    const script = document.createElement("script");
-    script.src = "https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js";
-    script.async = true;
-    document.body.appendChild(script);
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script);
-      }
-    };
-  }, []);
-
-  const triggerWaterBurst = () => {
-    if (!window.confetti) return;
-
-    window.confetti({
-      particleCount: 500,
-      spread: 120,
-      origin: { y: 0.6 },
-      colors: ["#06b6d4", "#0ea5e9", "#3b82f6", "#ffffff", "#7dd3fc"],
-      shapes: ["circle"],
-      scalar: 1.4,
-      gravity: 0.8,
-      ticks: 300,
-      startVelocity: 40,
-    });
+  const handleLoginClick = () => {
+    setAuthMode("login");
+    setIsAuthModalOpen(true);
   };
 
-  useEffect(() => {
-    if (!wallet) setCurrentStep(1);
-    else if (!studentName) setCurrentStep(2);
-    else if (!isSuccess) setCurrentStep(3);
-    else setCurrentStep(4);
-  }, [wallet, studentName, isSuccess]);
-
-  useEffect(() => {
-    if (isSuccess) {
-      triggerWaterBurst();
-    }
-  }, [isSuccess]);
-
-  const connectSuiWallet = () => {
-    connectSlush();
+  const handleRegisterClick = () => {
+    setAuthMode("register");
+    setIsAuthModalOpen(true);
   };
 
-  const handleDisconnect = () => {
-    disconnectWallet();
-    setStudentName("");
-    setTxHash("");
-    setIsSuccess(false);
-    setIsMinting(false);
-    setCurrentStep(1);
-  };
-
-  useEffect(() => {
-    const formatted = new Date().toLocaleDateString("vi-VN", {
-      day: "2-digit",
-      month: "long",
-      year: "numeric",
-    });
-    setIssueDate(formatted);
-  }, []);
-
-  const handleDownloadPdf = async () => {
-    if (!certificateRef.current) return;
-    const [{ default: html2canvas }, { jsPDF }] = await Promise.all([
-      import("html2canvas"),
-      import("jspdf"),
-    ]);
-    const target = certificateRef.current;
-
-    const canvas = await html2canvas(target, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-    });
-
-    const imgData = canvas.toDataURL("image/png");
-    const pdf = new jsPDF({ orientation: "landscape", unit: "pt", format: "a4" });
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-
-    const ratio = Math.min(pageWidth / canvas.width, pageHeight / canvas.height);
-    const imgWidth = canvas.width * ratio;
-    const imgHeight = canvas.height * ratio;
-    const x = (pageWidth - imgWidth) / 2;
-    const y = (pageHeight - imgHeight) / 2;
-
-    pdf.addImage(imgData, "PNG", x, y, imgWidth, imgHeight);
-    pdf.save("certificate.pdf");
-  };
-
-  const capturePreview = useCallback(async (): Promise<string | null> => {
-    if (!certificateRef.current) return null;
-    const { default: html2canvas } = await import("html2canvas");
-    const canvas = await html2canvas(certificateRef.current, {
-      scale: 2,
-      backgroundColor: "#ffffff",
-      useCORS: true,
-    });
-    return canvas.toDataURL("image/png");
-  }, []);
-
-  const handleMint = () => {
-    if (!wallet || !studentName) return;
-    setIsMinting(true);
-    window.setTimeout(() => {
-      setIsMinting(false);
-      setIsSuccess(true);
-      setTxHash(wallet);
-    }, 2800);
-  };
-
-  const handleSendConfirmation = async () => {
-    if (!wallet || !isSuccess || !studentName) return;
-    setIsSubmitting(true);
-    try {
-      const previewUrl = await capturePreview();
-      const requestId = `REQ-${Date.now()}`;
-      const submittedAt = new Date().toISOString();
-      const previewHash = createPreviewHash(`${requestId}-${wallet}-${previewUrl ?? ""}`);
-
-      const userPayload: UserPayload = {
-        request_id: requestId,
-        user_wallet: wallet,
-        course: { course_id: course.id, course_name: course.name },
-        display_name: studentName,
-        completion: { completed: true, completed_at: submittedAt },
-        certificate_preview: { preview_url: previewUrl, preview_hash: previewHash },
-        status: "pending",
-        submitted_at: submittedAt,
-      };
-
-      const adminPayload: AdminPayload = {
-        request_id: requestId,
-        recipient_wallet: wallet,
-        course: { course_id: course.id, course_name: course.name },
-        completion_status: { verified: true, completed_at: submittedAt },
-        certificate_preview: { preview_url: previewUrl, preview_hash: previewHash },
-        admin_decision: { status: "pending", reviewed_by: "", reviewed_at: "", note: "" },
-      };
-
-      const entry: AdminQueueEntry = {
-        requestId,
-        studentName,
-        courseName: course.name,
-        courseId: course.id,
-        completionDate: issueDate || new Date().toLocaleDateString("vi-VN"),
-        wallet,
-        certificatePreview: previewUrl,
-        userPayload,
-        adminPayload,
-      };
-
-      const notification: NotificationItem = {
-        id: `NOTI-${requestId}`,
-        requestId,
-        message: `Học viên ${studentName} gửi yêu cầu xác nhận khóa ${course.name}.`,
-        createdAt: submittedAt,
-        status: "pending",
-      };
-
-      onQueueSubmission?.(entry);
-      onQueueNotification?.(notification);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleAdminClick = async () => {
-    const enterAdmin = (preview?: string | null) => onEnterAdmin?.(preview ?? null);
-
-    const proceed = async () => {
-      const preview = await capturePreview();
-      enterAdmin(preview);
-    };
-
-    if (!wallet) {
-      connectSlush({ onSuccess: () => proceed() });
+  const handleLoginSuccess = (user: { fullName: string; role: "student" | "admin"; email: string }) => {
+    setCurrentUser(user);
+    setIsAuthModalOpen(false);
+    console.log('Đăng nhập thành công:', user);
+    
+    // Lưu vào localStorage
+    localStorage.setItem('user', JSON.stringify(user));
+    
+    // Điều hướng theo role
+    if (user.role === 'admin') {
+      onAdmin(); // Chuyển sang AdminView
     } else {
-      await proceed();
+      navigate('/'); // Chuyển về trang Home
     }
   };
-
-  const steps = [
-    { id: 1, name: "Kết nối ví", status: wallet ? "complete" : "current" },
-    { id: 2, name: "Thông tin", status: studentName ? "complete" : wallet ? "current" : "upcoming" },
-    { id: 3, name: "Xác thực", status: isSuccess ? "complete" : studentName ? "current" : "upcoming" },
-  ];
 
   return (
-    <div className="min-h-screen bg-[#fafbfc] text-slate-700 font-sans selection:bg-cyan-100 selection:text-cyan-900 antialiased overflow-x-hidden">
+    <div className="min-h-screen bg-[#F0F4F8] dark:bg-[#0B1120] text-slate-900 dark:text-white flex flex-col transition-colors duration-300">
       <Navbar
-        walletAddress={wallet}
-        onConnect={connectSuiWallet}
-        onDisconnect={handleDisconnect}
-        isConnecting={isConnecting}
-        isDisconnecting={isDisconnecting}
-        onAdmin={handleAdminClick}
+        currentAccount={currentAccount}
+        onConnect={connectSlush}
+        onDisconnect={disconnectWallet}
+        onLoginClick={handleLoginClick}
+        onRegisterClick={handleRegisterClick}
+        currentUser={currentUser}
+        onLogout={() => {
+          setCurrentUser(null);
+          localStorage.removeItem('user');
+          navigate('/');
+        }}
       />
-
-      <main className="pt-32 pb-24 px-6 max-w-6xl mx-auto">
-        <div className="mb-12 flex justify-center items-center space-x-4">
-          {steps.map((step, idx) => (
-            <React.Fragment key={step.id}>
-              <div className="flex items-center space-x-2">
-                <div
-                  className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all ${
-                    step.status === "complete"
-                      ? "bg-emerald-500 text-white"
-                      : step.status === "current"
-                        ? "bg-cyan-600 text-white"
-                        : "bg-slate-200 text-slate-500"
-                  }`}
-                >
-                  {step.status === "complete" ? <CheckCircle2 className="w-4 h-4" /> : step.id}
-                </div>
-                <span
-                  className={`text-xs font-bold uppercase tracking-wider ${step.status === "current" ? "text-slate-900" : "text-slate-400"}`}
-                >
-                  {step.name}
-                </span>
-              </div>
-              {idx < steps.length - 1 && <div className="w-8 h-px bg-slate-200" />}
-            </React.Fragment>
-          ))}
-        </div>
-
-        {!isSuccess ? (
-          <div className="text-center mb-12 space-y-3 animate-in fade-in duration-700">
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Chứng nhận Kỹ năng Sui</h1>
-            <p className="text-slate-500 max-w-lg mx-auto text-sm md:text-base leading-relaxed">
-              Bạn đã hoàn thành khóa học xuất sắc. Hãy xác nhận tên để đúc <strong>Sui Object NFT</strong> vĩnh viễn trên mạng lưới.
-            </p>
-          </div>
-        ) : (
-          <div className="text-center mb-12 space-y-3 animate-in zoom-in duration-500">
-            <div className="inline-flex items-center space-x-2 bg-cyan-100 text-cyan-700 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-2 shadow-sm">
-              <Sparkles className="w-4 h-4 animate-pulse" /> <span>Hành trình mới bắt đầu từ đây!</span>
-            </div>
-            <h1 className="text-3xl md:text-5xl font-black text-slate-900 tracking-tight">Bằng chứng kỹ năng đã được đúc!</h1>
-          </div>
-        )}
-
-        <div className="grid lg:grid-cols-12 gap-10 items-start">
-          <div className="lg:col-span-8 space-y-8">
-            <CertificateCard
-              studentName={studentName}
-              courseName={course.name}
-              date={issueDate || "--"}
-              txHash={txHash}
-              isSuccess={isSuccess}
-              walletAddress={wallet}
-              certificateRef={certificateRef}
-            />
-          </div>
-
-          <div className="lg:col-span-4 space-y-6">
-            <div className={`bg-white border rounded-[2rem] p-8 shadow-xl shadow-slate-200/50 transition-all ${currentStep === 2 ? "ring-2 ring-cyan-500 ring-offset-4" : ""}`}>
-              <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center">
-                <User className="w-5 h-5 mr-2 text-cyan-600" />
-                Dữ liệu học viên
-              </h3>
-
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 pl-1">Họ và tên hiển thị</label>
-                  <div className="relative group">
-                    <input
-                      type="text"
-                      value={studentName}
-                      onChange={(e) => setStudentName(e.target.value)}
-                      placeholder="VD: Nguyễn Văn A"
-                      className="w-full px-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl text-slate-900 focus:outline-none focus:ring-4 focus:ring-cyan-500/10 focus:border-cyan-500 focus:bg-white transition-all font-medium"
-                      disabled={isSuccess || !wallet}
-                    />
-                    {!wallet && (
-                      <div className="absolute inset-0 bg-white/60 backdrop-blur-[1px] rounded-2xl flex items-center justify-center cursor-not-allowed">
-                        <span className="text-[10px] font-bold text-slate-400 flex items-center">
-                          <ShieldCheck className="w-3 h-3 mr-1" /> Kết nối ví trước
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="pt-4 border-t border-slate-50">
-                  {!isSuccess ? (
-                    <button
-                      disabled={!wallet || isMinting || !studentName}
-                      onClick={handleMint}
-                      className={`w-full group flex items-center justify-center space-x-3 px-6 py-5 rounded-2xl font-black text-base transition-all ${
-                        !wallet || !studentName
-                          ? "bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200"
-                          : "bg-gradient-to-r from-cyan-600 to-blue-700 text-white hover:scale-[1.02] shadow-xl shadow-blue-500/20 active:scale-95"
-                      }`}
-                    >
-                      {isMinting ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Đang tương tác với Sui...</span>
-                        </>
-                      ) : (
-                        <>
-                          <span>Tạo chứng chỉ</span>
-                          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                        </>
-                      )}
-                    </button>
-                  ) : (
-                    <div className="space-y-3 animate-in slide-in-from-bottom duration-500">
-                      <button
-                        onClick={handleSendConfirmation}
-                        disabled={isSubmitting}
-                        className={`w-full px-6 py-4 rounded-2xl font-bold flex items-center justify-center space-x-2 shadow-lg transition-all active:scale-95 ${
-                          isSubmitting ? "bg-emerald-200 text-emerald-800" : "bg-emerald-600 text-white hover:bg-emerald-700 shadow-emerald-100"
-                        }`}
-                      >
-                        {isSubmitting ? <Loader2 className="w-5 h-5 animate-spin" /> : <ExternalLink className="w-5 h-5" />}
-                        <span>{isSubmitting ? "Đang gửi..." : "Gửi Xác Nhận"}</span>
-                      </button>
-                      <div className="grid grid-cols-2 gap-3">
-                        <button
-                          onClick={handleDownloadPdf}
-                          className="flex items-center justify-center space-x-2 py-3 border border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-tighter text-slate-600 hover:bg-slate-50 transition-all"
-                        >
-                          <Download className="w-4 h-4" />
-                          <span>Tải PDF</span>
-                        </button>
-                        <button className="flex items-center justify-center space-x-2 py-3 border border-slate-200 rounded-xl text-[11px] font-black uppercase tracking-tighter text-slate-600 hover:bg-slate-50 transition-all">
-                          <Share2 className="w-4 h-4" />
-                          <span>Share</span>
-                        </button>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-cyan-50/30 rounded-3xl p-6 border border-cyan-100/50 space-y-3">
-              <h4 className="text-[10px] font-black text-cyan-700 uppercase flex items-center tracking-widest">
-                <Info className="w-3 h-3 mr-1.5" /> Thông tin kỹ thuật
-              </h4>
-              <ul className="space-y-2">
-                <li className="flex justify-between text-[10px] font-bold">
-                  <span className="text-cyan-600/60 uppercase">Mạng lưới</span>
-                  <span className="text-cyan-800">SUI Mainnet</span>
-                </li>
-                <li className="flex justify-between text-[10px] font-bold">
-                  <span className="text-cyan-600/60 uppercase">Dạng dữ liệu</span>
-                  <span className="text-cyan-800">Move Object</span>
-                </li>
-                <li className="flex justify-between text-[10px] font-bold">
-                  <span className="text-cyan-600/60 uppercase">Xác thực</span>
-                  <span className="text-emerald-600">Thời gian thực</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        <div className="mt-24 pt-16 border-t border-slate-100">
-          <p className="text-center text-[10px] text-slate-400 font-black uppercase tracking-[0.4em] mb-12">Bảo chứng bởi hệ sinh thái Sui</p>
-          <div className="flex flex-wrap justify-center gap-x-20 gap-y-12 items-center px-10 grayscale opacity-40 hover:opacity-100 hover:grayscale-0 transition-all duration-500">
-            <div className="flex items-center space-x-2 font-black text-xl italic text-slate-900">
-              <div className="w-6 h-6 bg-cyan-500 rounded-full scale-75 blur-[1px]" /> SUI FOUNDATION
-            </div>
-            <div className="font-bold text-2xl tracking-tighter text-slate-900 decoration-cyan-400 decoration-4 underline">MYSTEN LABS</div>
-            <div className="flex items-center space-x-2">
-              <SuiLogo className="w-8 h-8 text-cyan-600" />
-              <span className="font-black text-2xl tracking-tighter italic text-slate-900 uppercase">Sui Network</span>
-            </div>
-          </div>
-        </div>
+      <main className="flex-1">
+        {children}
       </main>
-
-      <footer className="bg-white border-t border-slate-100 py-16">
-        <div className="max-w-6xl mx-auto px-6 flex flex-col md:flex-row justify-between items-center text-slate-400 text-[11px] font-bold uppercase tracking-widest gap-6">
-          <div className="flex items-center space-x-4">
-            <div className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-              <SuiLogo className="text-slate-300 w-6 h-6" />
-            </div>
-            <p>© 2025 SUI ACADEMY. SECURED BY MOVE SMART CONTRACTS.</p>
-          </div>
-          <div className="flex space-x-8">
-            <a href="#" className="hover:text-cyan-600 transition-colors">Developer Docs</a>
-            <a href="#" className="hover:text-cyan-600 transition-colors">Verify Certificate</a>
-            <a href="#" className="hover:text-cyan-600 transition-colors">Sui Global</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
+      
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={isAuthModalOpen}
+        onClose={() => setIsAuthModalOpen(false)}
+        initialMode={authMode}
+        onLoginSuccess={handleLoginSuccess}
+      />
     </div>
   );
-}
+};
 
-const App = () => {
+// Main app content with routing
+const AppContent: React.FC = () => {
   const [adminMode, setAdminMode] = useState(false);
   const [certificatePreview, setCertificatePreview] = useState<string | null>(null);
   const [adminQueue, setAdminQueue] = useState<AdminQueueEntry[]>([]);
   const [notificationQueue, setNotificationQueue] = useState<NotificationItem[]>([]);
 
+  // Load data from localStorage
   useEffect(() => {
     try {
       const storedQueue = localStorage.getItem(STORAGE_KEYS.queue);
       const storedNotifications = localStorage.getItem(STORAGE_KEYS.notifications);
-      if (storedQueue) setAdminQueue(JSON.parse(storedQueue).map(normalizeEntry));
+      if (storedQueue) {
+        const parsed = JSON.parse(storedQueue);
+        // Lọc bỏ Base64 images khi load
+        const cleaned = parsed.map((e: any) => ({
+          ...e,
+          certificatePreview: e.certificatePreview?.startsWith('data:image/') ? null : e.certificatePreview
+        }));
+        setAdminQueue(cleaned.map(normalizeEntry));
+      }
       if (storedNotifications) setNotificationQueue(JSON.parse(storedNotifications));
-    } catch (error) {
-      console.warn("Không đọc được dữ liệu queue từ localStorage", error);
+    } catch (error: any) {
+      if (error.name === 'QuotaExceededError') {
+        console.warn("LocalStorage đầy, xóa dữ liệu cũ");
+        try {
+          localStorage.removeItem(STORAGE_KEYS.queue);
+          localStorage.removeItem(STORAGE_KEYS.notifications);
+        } catch (e) {
+          console.error("Không thể xóa localStorage:", e);
+        }
+      } else {
+        console.warn("Không đọc được dữ liệu queue từ localStorage", error);
+      }
     }
   }, []);
 
+  // Sync with localStorage changes
   useEffect(() => {
     const handleStorage = (event: StorageEvent) => {
       try {
@@ -774,7 +223,68 @@ const App = () => {
     const normalized = normalizeEntry(entry);
     setAdminQueue((prev) => {
       const next = [normalized, ...prev];
-      localStorage.setItem(STORAGE_KEYS.queue, JSON.stringify(next));
+      try {
+        // Không lưu Base64 image vào localStorage - chỉ lưu metadata
+        const entryWithoutBase64 = {
+          ...normalized,
+          certificatePreview: normalized.certificatePreview?.startsWith('data:image/') 
+            ? null // Không lưu Base64 data URL
+            : normalized.certificatePreview,
+          userPayload: {
+            ...normalized.userPayload,
+            certificate_preview: {
+              ...normalized.userPayload.certificate_preview,
+              preview_url: normalized.userPayload.certificate_preview.preview_url?.startsWith('data:image/')
+                ? null // Không lưu Base64
+                : normalized.userPayload.certificate_preview.preview_url
+            }
+          },
+          adminPayload: {
+            ...normalized.adminPayload,
+            certificate_preview: {
+              ...normalized.adminPayload.certificate_preview,
+              preview_url: normalized.adminPayload.certificate_preview.preview_url?.startsWith('data:image/')
+                ? null // Không lưu Base64
+                : normalized.adminPayload.certificate_preview.preview_url
+            }
+          }
+        };
+        localStorage.setItem(STORAGE_KEYS.queue, JSON.stringify([entryWithoutBase64, ...prev.map(e => ({
+          ...e,
+          certificatePreview: e.certificatePreview?.startsWith('data:image/') ? null : e.certificatePreview,
+          userPayload: {
+            ...e.userPayload,
+            certificate_preview: {
+              ...e.userPayload.certificate_preview,
+              preview_url: e.userPayload.certificate_preview.preview_url?.startsWith('data:image/') ? null : e.userPayload.certificate_preview.preview_url
+            }
+          },
+          adminPayload: {
+            ...e.adminPayload,
+            certificate_preview: {
+              ...e.adminPayload.certificate_preview,
+              preview_url: e.adminPayload.certificate_preview.preview_url?.startsWith('data:image/') ? null : e.adminPayload.certificate_preview.preview_url
+            }
+          }
+        }))]));
+      } catch (error: any) {
+        if (error.name === 'QuotaExceededError') {
+          console.warn("LocalStorage đầy, xóa các entry cũ để giải phóng dung lượng");
+          // Xóa các entry cũ nhất, chỉ giữ 5 entry mới nhất
+          const limited = next.slice(0, 5);
+          try {
+            localStorage.setItem(STORAGE_KEYS.queue, JSON.stringify(limited.map(e => ({
+              ...e,
+              certificatePreview: e.certificatePreview?.startsWith('data:image/') ? null : e.certificatePreview
+            }))));
+          } catch (e2) {
+            console.error("Vẫn không thể lưu vào localStorage:", e2);
+            // Chỉ cập nhật state, không lưu vào localStorage
+          }
+        } else {
+          console.error("Lỗi khi lưu vào localStorage:", error);
+        }
+      }
       return next;
     });
   };
@@ -789,33 +299,59 @@ const App = () => {
 
   const handleMarkNotificationSeen = (id: string) => {
     setNotificationQueue((prev) => {
-      const next = prev.map((item) => (item.id === id ? { ...item, status: "seen" } : item));
+      const next = prev.map((item) => (item.id === id ? { ...item, status: "seen" as const } : item));
       localStorage.setItem(STORAGE_KEYS.notifications, JSON.stringify(next));
       return next;
     });
   };
 
+  const handleEnterAdmin = (preview?: string | null) => {
+    setCertificatePreview(preview ?? null);
+    setAdminMode(true);
+  };
+
+  if (adminMode) {
+    return (
+      <AdminView
+        certificateImage={certificatePreview}
+        onExit={() => setAdminMode(false)}
+        requests={adminQueue}
+        notifications={notificationQueue}
+        onMarkNotificationSeen={handleMarkNotificationSeen}
+      />
+    );
+  }
+
+  return (
+    <Layout onAdmin={() => setAdminMode(true)}>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/courses" element={<Courses />} />
+        <Route path="/courses/:id" element={<Courses />} />
+        <Route path="/learn/:courseId" element={<CourseLearning />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/certificate-info" element={<CertificateInfo />} />
+        <Route 
+          path="/certificate" 
+          element={
+            <Certificate 
+              onEnterAdmin={handleEnterAdmin}
+              onQueueSubmission={handleQueueSubmission}
+              onQueueNotification={handleQueueNotification}
+            />
+          } 
+        />
+      </Routes>
+    </Layout>
+  );
+};
+
+const App: React.FC = () => {
   return (
     <SuiProviders>
-      {adminMode ? (
-        <AdminView
-          certificateImage={certificatePreview}
-          onExit={() => setAdminMode(false)}
-          requests={adminQueue}
-          notifications={notificationQueue}
-          onMarkNotificationSeen={handleMarkNotificationSeen}
-        />
-      ) : (
-        <AppContent
-          course={COURSE_INFO}
-          onQueueSubmission={handleQueueSubmission}
-          onQueueNotification={handleQueueNotification}
-          onEnterAdmin={(preview) => {
-            setCertificatePreview(preview ?? null);
-            setAdminMode(true);
-          }}
-        />
-      )}
+      <Router>
+        <AppContent />
+      </Router>
     </SuiProviders>
   );
 };

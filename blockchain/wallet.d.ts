@@ -2,7 +2,7 @@ export declare function SuiProviders({ children }: {
     children: any;
 }): import("react/jsx-runtime").JSX.Element;
 export declare function useSlushWallet(): {
-    currentAccount: import("@wallet-standard/core").WalletAccount;
+    currentAccount: import("@wallet-standard/base").WalletAccount;
     connectSlush: (callbacks?: {
         onSuccess?: () => void;
         onError?: (error: Error) => void;

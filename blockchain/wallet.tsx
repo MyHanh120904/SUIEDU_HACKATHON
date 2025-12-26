@@ -17,7 +17,11 @@ export function SuiProviders({ children }: { children: any }) {
   return (
     <QueryClientProvider client={queryClient}>
       <SuiClientProvider networks={networkConfig} defaultNetwork="testnet">
-        <WalletProvider autoConnect preferredWallets={["Slush"]}>
+        <WalletProvider 
+          autoConnect 
+          preferredWallets={["Slush"]}
+          storageKey="sui-slush-wallet"
+        >
           {children}
         </WalletProvider>
       </SuiClientProvider>
@@ -38,22 +42,23 @@ export function useSlushWallet() {
 
   const connectSlush = useCallback(
     (callbacks?: { onSuccess?: () => void; onError?: (error: Error) => void }) => {
-      const targetWallet = slushWallet ?? wallets[0];
-
-      if (!targetWallet) {
-        callbacks?.onError?.(new Error("No Sui-compatible wallets detected"));
+      // Chỉ cho phép kết nối với Slush wallet
+      if (!slushWallet) {
+        const error = new Error("Vui lòng cài đặt và mở ví Slush để tiếp tục. Ứng dụng chỉ hỗ trợ ví Slush.");
+        callbacks?.onError?.(error);
+        alert("Vui lòng cài đặt và mở ví Slush để tiếp tục. Ứng dụng chỉ hỗ trợ ví Slush.");
         return;
       }
 
       connect(
-        { wallet: targetWallet },
+        { wallet: slushWallet },
         {
           onSuccess: () => callbacks?.onSuccess?.(),
           onError: (error) => callbacks?.onError?.(error),
         },
       );
     },
-    [connect, slushWallet, wallets],
+    [connect, slushWallet],
   );
 
   return {

@@ -1,4 +1,4 @@
-import { SuiClient, getFullnodeUrl } from "@mysten/sui.js/client";
+import { SuiClient, getFullnodeUrl } from "@mysten/sui/client";
 import { networkConfig } from "./networkConfig";
 
 // Centralized Sui client configured for testnet only.
